@@ -1,0 +1,6 @@
+# Only needed this if using conceptnet_rocks
+pandas==1.5.3
+conceptnet_rocks==0.1.2
+
+ipykernel==6.29.4
+requests==2.31.0
