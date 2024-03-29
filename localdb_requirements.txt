@@ -1,0 +1,3 @@
+# Only needed this if using conceptnet_rocks
+pandas==1.5.3
+conceptnet_rocks==0.1.2
