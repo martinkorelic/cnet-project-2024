@@ -21,8 +21,9 @@ pip install -r localdb_requirements.txt
 ## Usage
 
 ```py
-from cnet_data.cnet_db import create_db
-from cnet_data.cnet_filter import CNetFilter, CNetRelations
+from cnet.graph import CNetGraph
+from cnet.data.cnet_db import create_db
+from cnet.data.cnet_filter import CNetFilter, CNetRelations
 
 ## Create DB
 db = create_db(is_local=IS_LOCAL_DB)
@@ -37,4 +38,7 @@ my_filter = CNetFilter(f_relations, language='en')
 
 # Query some word (with some filter)
 data = db.get_edges(word='information', cnet_filter=my_filter)
+
+## OR create from the graph network class
+cnet = CNetGraph(is_local=IS_LOCAL_DB, cnet_filter=my_filter)
 ```

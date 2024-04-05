@@ -8,7 +8,7 @@ try:
 except ModuleNotFoundError:
     pass
 
-from .cnet_filter import CNetFilter
+from .filter import CNetFilter
 
 def create_db(is_local):
     return CNetLocal() if is_local else CNetAPI()
