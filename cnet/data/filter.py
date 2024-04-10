@@ -80,7 +80,8 @@ class CNetFilter():
         self.relations = relations.list_relats
         self.filters = {
             'relations': self.create_relation_filter(),
-            'language': self.create_language_filter()
+            'language': self.create_language_filter(),
+            'one_word': self.create_one_word_filter()
         }
 
         # TODO: Add additional fields, if requested
@@ -93,14 +94,23 @@ class CNetFilter():
 
     # Filter end node by language
     def create_language_filter(self):
-        return lambda d: 'language' in d['end'] and d['end']['language'] in self.language
+        return lambda d: 'language' in d['end'] and d['end']['language'] in self.language and 'language' in d['start'] and d['start']['language'] in self.language
+
+    # Filter by one words
+    def create_one_word_filter(self):
+        return lambda d: ' ' not in d['end']['label'] and ' ' not in d['start']['label']
 
     # TODO: Filter by dataset control filter
     
     # TODO: Create more control filters if needed
 
-    def __clean(self):
-        pass
+    ## Cleaners that control how the data gets cleaned
+    def __clean(self, d):
+
+        # Change the word to lowercase
+        d['start']['label'] = d['start']['label'].lower()
+        d['end']['label'] = d['end']['label'].lower()
+        return d
 
     def __filter(self, data, conjuction=True):
         ds = [ f(data) for f in self.filters.values() ]
@@ -108,11 +118,4 @@ class CNetFilter():
 
     # Run data through every defined filter
     def run_filters(self, data, conjuction=True):
-        # TODO: Also clean the data (e.g. self.__clean(d))
-        return [ d for d in data if self.__filter(d, conjuction)]
-
-    ## Cleaners that control how the data gets cleaned
-
-    # TODO: Use a lemmatizer to create lemmas from the given words
-    def lemmatize(self, data):
-        pass
+        return [ self.__clean(d) for d in data if self.__filter(d, conjuction)]

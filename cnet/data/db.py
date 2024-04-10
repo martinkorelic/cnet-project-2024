@@ -36,7 +36,18 @@ class CNetDatabase():
 
         @word - word to query
         @cnet_filter - filter to apply the data is collected
-        @**kwargs - dict, additional params for querying
+
+        Additional parameters:
+        @lang - language to get (e.g.: 'en')
+        @type - type of word to get (e.g.: 'noun')
+        @limit - limit the number of words to collect
+        @offset - offset for a certain number of words
+        @uri - already created URI, should be of correct form
+
+        Example:
+
+        >> get_edges('information', cnet_filter=CNetFilter(), ...)
+
         """
         pass
 
@@ -47,7 +58,18 @@ class CNetDatabase():
         @start_word - starting node
         @end_word - ending node
         @cnet_filter - filter to apply the data is collected
-        @**kwargs - dict, additional params for querying
+
+        Additional parameters:
+        @lang - language to get (e.g.: 'en')
+        @type - type of word to get (e.g.: 'noun')
+        @limit - limit the number of words to collect
+        @offset - offset for a certain number of words
+        @uri - already created URI, should be of correct form
+
+        Example:
+
+        >> get_single_edge('information', 'data', cnet_filter=CNetFilter, ...)
+
         """
         pass
 
@@ -63,7 +85,7 @@ class CNetDatabase():
         is_node = 'c' if is_node else 'a'
         s = f'/{is_node}/{language}/{entity}'
         if cnet_type and cnet_type in self.uri_types:
-            s += f'/{self.uri_types[cnet_type]}/'
+            s += f'/{self.uri_types[cnet_type]}'
         return s
 
 
@@ -80,20 +102,28 @@ class CNetLocal(CNetDatabase):
     def get_edges(self, word, cnet_filter: CNetFilter = None, **kwargs):
         target_language = 'en'
         cnet_type = ''
+        uri = ''
         limit = 100
         offset = 0
 
         if 'lang' in kwargs:
             target_language = kwargs['lang']
         if 'type' in kwargs:
-            cnet_type = kwargs['cnet_type']
+            cnet_type = kwargs['type']
         if 'limit' in kwargs:
             limit = kwargs['limit']
         if 'offset' in kwargs:
             offset = kwargs['offset']
+        if 'uri' in kwargs:
+            # Extract the URI
+            uri = kwargs['uri']
 
-        # Create the URI
-        uri = self.uri_builder(entity=word, cnet_type=cnet_type, is_node=True, language=target_language)
+            # Add cnet type if also mentioned
+            if cnet_type:
+                uri += f'/{self.uri_types[cnet_type]}'
+        else:
+            # Create the URI
+            uri = self.uri_builder(entity=word, cnet_type=cnet_type, is_node=True, language=target_language)
 
         # Collect the data
         data = self.db.lookup(uri, limit=limit, offset=offset)
@@ -107,6 +137,7 @@ class CNetLocal(CNetDatabase):
     def get_single_edge(self, start_word, end_word, relation, cnet_filter: CNetFilter = None, **kwargs):
         target_language = 'en'
         cnet_type = ''
+        uri_a = ''
         limit = 100
         offset = 0
 
@@ -118,16 +149,19 @@ class CNetLocal(CNetDatabase):
             limit = kwargs['limit']
         if 'offset' in kwargs:
             offset = kwargs['offset']
+        if 'uri' in kwargs:
+            # Extract the URI
+            uri_a = kwargs['uri']
+        else:
+            # Create the URI for start word
+            uri_1 = self.uri_builder(entity=start_word, cnet_type=cnet_type, is_node=False, language=target_language)
 
-        # Create the URI for start word
-        uri_1 = self.uri_builder(entity=start_word, cnet_type=cnet_type, is_node=False, language=target_language)
+            # Create the URI for end word
+            uri_2 = self.uri_builder(entity=start_word, cnet_type=cnet_type, is_node=False, language=target_language)
 
-        # Create the URI for end word
-        uri_2 = self.uri_builder(entity=start_word, cnet_type=cnet_type, is_node=False, language=target_language)
-
-        # Assuming the relation string is correctly constructed (e.g. /r/IsA/)
-        # Build the URI assertion string
-        uri_a = f'/a/[{relation},{uri_1},{uri_2}]'
+            # Assuming the relation string is correctly constructed (e.g. /r/IsA/)
+            # Build the URI assertion string
+            uri_a = f'/a/[{relation},{uri_1},{uri_2}]'
         
         # Query the database
         data = self.db.lookup(uri_a, limit=limit, offset=offset)
