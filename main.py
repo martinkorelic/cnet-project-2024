@@ -2,6 +2,7 @@ import os, configparser
 from cnet.graph import CNetGraph
 from cnet.data.db import create_db
 from cnet.data.filter import CNetFilter, CNetRelations
+from cnet.data.embedding import GoogleWord2Vec, Glove, GloveTwitter, CNetNumberbatch, FastText
 
 # Read configuration
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +12,9 @@ config.read('configuration.ini')
 # For more info on the parameters, see the config.ini file
 IS_LOCAL_DB = config.getboolean('DATABASE', 'local')
 DEBUG_GRAPH = config.getboolean('GRAPH', 'debug')
+
+# Embedding models
+FASTTEXT_MODEL_PATH = config.get('EMBEDDING', 'ftModelPath')
 
 # Main code
 
@@ -50,7 +54,14 @@ if __name__ == "__main__":
 
     # Create local graph around center node
     # This will also save the local graph to filename
-    #local_graph = cnet.create_local_graph('information', distance=2, type='noun', limit=None, save=True, filename='graphdata/information.graphml')
+    local_graph = cnet.create_local_graph('information', distance=2, type='noun', limit=None, save=True, filename='graphdata/information.graphml')
+
+    """
+    # Get word embeddings ordered set from other models.
+
+    em = FastText(is_local=IS_LOCAL_DB)
+    print(em.get_top_words('information', limit=1000))
+    """
 
     """
     # Load the graph from file
