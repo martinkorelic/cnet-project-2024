@@ -183,9 +183,82 @@ class CNetAPI(CNetDatabase):
 
         self.base_url = 'http://api.conceptnet.io/'
 
-    # TODO: Implement all methods from the CNetDatabase that usi the Web API
+
     def get_edges(self, word, cnet_filter: CNetFilter = None, **kwargs):
-        return None
+        target_language = kwargs.get('lang', 'en')
+        cnet_type = kwargs.get('type', None)
+        limit = kwargs.get('limit', 100)
+        offset = kwargs.get('offset', 0)
+
+        uri = self.uri_builder(entity=word, cnet_type=cnet_type, is_node=True, language=target_language)
+        url = f"{self.base_url}{uri}?limit={limit}&offset={offset}"
+        response = requests.get(url)
+        data = response.json()
+        edges = []
+        for edge in data['edges']:
+            edges.append({
+                'dataset': edge['dataset'],
+                'end': edge['end'],
+                'sources': edge['sources'],
+                'start': edge['start'],
+                'weight': edge['weight'],
+                'surfaceText': edge['surfaceText'],
+                'rel': edge['rel'],
+                'license': edge['license'],
+                '@id': edge['@id'],
+                '@type': edge['@type']
+            })
+        if cnet_filter:
+            edges = cnet_filter.run_filters(edges)
+
+        return edges
     
     def get_single_edge(self, start_word, end_word, cnet_filter: CNetFilter = None, **kwargs):
-        return None
+        target_language = kwargs.get('lang', 'en')
+        cnet_type = kwargs.get('type', None)
+        limit = kwargs.get('limit', 100)
+        offset = kwargs.get('offset', 0)
+
+        uri_1 = self.uri_builder(entity=start_word, cnet_type=cnet_type, is_node=True, language=target_language)
+        uri_2 = self.uri_builder(entity=end_word, cnet_type=cnet_type, is_node=True, language=target_language)
+        uri_a = f"query?node={uri_1}&other={uri_2}"
+
+        url = f"{self.base_url}{uri_a}"
+        response = requests.get(url)
+        data = response.json()
+
+        edges = []
+        for edge_data in data['edges']:
+            edge = {
+                'dataset': edge_data['dataset'],
+                'end': edge_data['end'],
+                'sources': edge_data['sources'],
+                'start': edge_data['start'],
+                'weight': edge_data['weight'],
+                'surfaceText': edge_data['surfaceText'],
+                'rel': edge_data['rel'],
+                'license': edge_data['license'],
+                '@id': edge_data['@id'],
+                '@type': edge_data['@type']
+            }
+            edges.append(edge)
+
+        if cnet_filter:
+            edges = cnet_filter.run_filters(edges)
+
+        return edges
+
+    def uri_builder(self, entity, cnet_type=None, is_node=True, language='en'):
+        """
+        Builds the URI string for querying.
+
+        @entity - term for query
+        @cnet_type - synset type
+        @is_node - node or edge
+        @language - language
+        """
+        is_node = 'c' if is_node else 'a'
+        s = f'/{is_node}/{language}/{entity}'
+        if cnet_type and cnet_type in self.uri_types:
+            s += f'/{self.uri_types[cnet_type]}'
+        return s
