@@ -194,7 +194,6 @@ class CNetAPI(CNetDatabase):
         url = f"{self.base_url}{uri}?limit={limit}&offset={offset}"
         response = requests.get(url)
         data = response.json()
-        print(data)
         edges = []
         for edge in data['edges']:
             edges.append({
@@ -209,7 +208,6 @@ class CNetAPI(CNetDatabase):
                 '@id': edge['@id'],
                 '@type': edge['@type']
             })
-        print(edges)
         if cnet_filter:
             edges = cnet_filter.run_filters(edges)
 
@@ -226,7 +224,6 @@ class CNetAPI(CNetDatabase):
         uri_a = f"query?node={uri_1}&other={uri_2}"
 
         url = f"{self.base_url}{uri_a}"
-        print(url)
         response = requests.get(url)
         data = response.json()
 
