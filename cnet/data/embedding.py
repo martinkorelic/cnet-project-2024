@@ -6,6 +6,8 @@ from nltk.tag import pos_tag
 from nltk.tokenize import word_tokenize
 from .db import create_db
 import gensim.downloader as api
+from node2vec import Node2Vec
+import networkx as nx
 
 class EmbeddingModel():
 
@@ -79,3 +81,47 @@ class FastText(Word2VecBase):
 class CNetNumberbatch(Word2VecBase):
     def __init__(self, is_local, full_model=True, limit=300000):
         super().__init__('conceptnet-numberbatch-17-06-300', is_local, full_model=full_model, limit=limit)
+
+class Node2VecBase(EmbeddingModel):
+    def __init__(self, is_local, model_path='', limit=300000):
+        super().__init__(is_local)
+
+        if model_path:
+            self.model = KeyedVectors.load_word2vec_format(model_path, encoding='utf-8', unicode_errors='ignore', limit=limit)
+        else:
+            self.model = None
+
+    def embed_nodes_from_graph(self, graph_file, dimensions=64, walk_length=30, num_walks=200, workers=1, save_file_w2v='', save_file_model = '', **kwargs):
+
+        # Collect the graph
+        graph = nx.read_graphml(graph_file)
+
+        # Embed nodes
+        n2v = Node2Vec(graph, dimensions=dimensions, walk_length=walk_length, num_walks=num_walks, workers=workers, **kwargs)
+        self.model = n2v.fit(window=10, min_count=1, batch_words=4)
+
+        if save_file_w2v:
+            self.model.wv.save_word2vec_format(f'{save_file_w2v}_vectors')
+        
+        if save_file_model:
+            self.model.save(f'{save_file_model}_model')
+        
+        self.model = self.model.wv
+        return self.model
+    
+    def get_top_words(self, query, limit=100, check_exist=True):
+        
+        similar_words = OrderedSet()
+
+        w2v_words = self.model.most_similar(query, topn=limit)
+
+        for word, _ in w2v_words:
+            c_w = self.filter_clean(word)
+            if c_w and c_w not in similar_words:
+                if not check_exist:
+                    similar_words.add(c_w)
+                elif self.check_existance_net(c_w):
+                    similar_words.add(c_w)
+
+        print(f'Collected {len(similar_words)} similar words to "{query}".')
+        return similar_words

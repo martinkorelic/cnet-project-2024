@@ -2,7 +2,7 @@ import os, configparser
 from cnet.graph import CNetGraph
 from cnet.data.db import create_db
 from cnet.data.filter import CNetFilter, CNetRelations
-from cnet.data.embedding import GoogleWord2Vec, Glove, GloveTwitter, CNetNumberbatch, FastText
+from cnet.data.embedding import GoogleWord2Vec, Glove, GloveTwitter, CNetNumberbatch, FastText, Node2VecBase
 
 # Read configuration
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -54,13 +54,29 @@ if __name__ == "__main__":
 
     # Create local graph around center node
     # This will also save the local graph to filename
-    local_graph = cnet.create_local_graph('information', distance=2, type='noun', limit=None, save=True, filename='graphdata/information.graphml')
+    #local_graph = cnet.create_local_graph('information', distance=2, type='noun', limit=None, save=True, filename='graphdata/information.graphml')
 
     """
-    # Get word embeddings ordered set from other models.
+    # Get word embeddings ordered set from other embedding models.
 
     em = FastText(is_local=IS_LOCAL_DB)
     print(em.get_top_words('information', limit=1000))
+    """
+
+    """
+    # Get word embeddings ordered set from node2vec embedding model.
+    
+    n2v_em = Node2VecBase(is_local=IS_LOCAL_DB, model_path='node2vecdata/information')
+    print(n2v_em.get_top_words('information', limit=150))
+
+    """
+
+    """
+    # Embed the nodes from the local graph
+
+    n2v_em = Node2VecBase(is_local=IS_LOCAL_DB)
+    n2v_em.embed_nodes_from_graph('graphdata/information.graphml', save_file='node2vecdata/information', temp_folder='tmp/', workers=4)
+    
     """
 
     """
