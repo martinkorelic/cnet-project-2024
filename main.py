@@ -17,7 +17,6 @@ DEBUG_GRAPH = config.getboolean('GRAPH', 'debug')
 FASTTEXT_MODEL_PATH = config.get('EMBEDDING', 'ftModelPath')
 
 # Main code
-
 if __name__ == "__main__":
 
     ## Creating the graph class
