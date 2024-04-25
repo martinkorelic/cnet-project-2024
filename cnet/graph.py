@@ -36,17 +36,12 @@ class CNetGraph():
         @save - save local graph to file
         @load - load local graph from file
         @filename - file to save or load from
+        @bidir - create directional or undirectional graph
         """
 
-        save_data = False
-        load_data = False
-        filename = None
-        if 'save' in kwargs:
-            save_data = kwargs['save']
-        if 'load' in kwargs:
-            load_data = kwargs['load']
-        if 'filename' in kwargs:
-            filename = kwargs['filename']
+        save_data = kwargs.get('save', False)
+        load_data = kwargs.get('load', False)
+        filename = kwargs.get('filename', None)
 
         # Load or fetch a new local graph
         if load_data and filename:
@@ -58,7 +53,6 @@ class CNetGraph():
         ### TODO: implement algorithms to extract embedded nodes from the local graph
         if algorithm == 'todo':
             output = self.algorithm1(local_graph, **kwargs)
-
         
         # Optionally save the local graph
         if save_data and filename:
@@ -69,11 +63,15 @@ class CNetGraph():
 
         return local_graph
     
-    def bfs_distance(self, query, distance=1, **kwargs) -> nx.Graph:
+    def bfs_distance(self, query, distance=1, **kwargs) -> nx.DiGraph:
 
-        G = nx.Graph()
+        direct = kwargs.get('direct', True)
+        if direct:
+            G = nx.DiGraph()
+        else:
+            G = nx.Graph()
 
-        res = self.to_nx_data(self.db.get_edges(query, cnet_filter=self.cnet_filter, **kwargs))
+        res = self.to_nx_data(self.db.get_edges(query, cnet_filter=self.cnet_filter, **kwargs), direct=direct)
         
         if res:
             (center_node, c_node_data, c_edge_data) = res
@@ -85,7 +83,7 @@ class CNetGraph():
 
         # Add the initial nodes and edges to the graph
         G.add_nodes_from(c_node_data)
-        G.add_edges_from(c_edge_data)
+        G.add_edges_from([ex for e in c_edge_data for ex in e])
 
         # First step
         visited = set()
@@ -97,7 +95,7 @@ class CNetGraph():
             node_id, d = queue.pop(0)
 
             if d <= distance:
-                res = self.to_nx_data(self.db.get_edges(node_id, cnet_filter=self.cnet_filter, **kwargs))
+                res = self.to_nx_data(self.db.get_edges(node_id, cnet_filter=self.cnet_filter, **kwargs), direct=direct)
                 if res:
                     (_, c_node_data, c_edge_data) = res
                 else:
@@ -113,13 +111,14 @@ class CNetGraph():
                         nc_node_data.append(c_node_data[i])
                         queue.append((neighbour_node_id, d+1))
                     if node_id != neighbour_node_id:
-                        nc_edge_data.append(c_edge_data[i])
+                        for e in c_edge_data[i]:
+                            nc_edge_data.append(e)
                 
                 G.add_nodes_from(nc_node_data)
                 G.add_edges_from(nc_edge_data)
         return G
 
-    def to_nx_data(self, edges):
+    def to_nx_data(self, edges, direct):
         """
         Converts the data from collected edges into a nodes and edges ready for networkx conversion.
 
@@ -159,11 +158,18 @@ class CNetGraph():
             # Rewrite the edge id
             e_data['rel']['@id'] = f'{e_data["start"]["label"]}-{e_data["end"]["label"]}'
 
-            cnet_edges_data.append((e_data['start']['label'], e_data['end']['label'], e_data['rel']))
+            eds = [(e_data['start']['label'], e_data['end']['label'], e_data['rel'])]
+
+            # If the egde is bidirectional, add the reverse edge
+            if direct and e_data['rel']['label'] in self.cnet_filter.bidirectional_relations:
+                e_data['rel']['@id'] = f'{e_data["end"]["label"]}-{e_data["start"]["label"]}'
+                eds.append((e_data['end']['label'], e_data['start']['label'], e_data['rel']))
+
+            cnet_edges_data.append(eds)
 
         return queried_node, cnet_nodes_data, cnet_edges_data
     
-    def load_from_file(self, filename) -> nx.Graph:
+    def load_from_file(self, filename) -> nx.DiGraph:
         """
         Loads the local graph from the file.
         """
