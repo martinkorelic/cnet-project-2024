@@ -1,14 +1,14 @@
 from typing import List
-from cnet.data.db import create_db
+from cnet.data.db import create_db, CNetDatabase
 import networkx as nx
 import matplotlib.pyplot as plt
 
 class CNetGraph():
 
-    def __init__(self, is_local=False, cnet_filter=None, debug=False):
+    def __init__(self, db : CNetDatabase, cnet_filter=None, debug=False):
 
         ## Create DB
-        self.db = create_db(is_local=is_local)
+        self.db = db
         self.cnet_filter = cnet_filter
 
         # Configs
