@@ -3,4 +3,4 @@ __pycache__/
 INA_project.ipynb
 models/
 tmp/
-node2vecdata/
+embeddata/
