@@ -34,8 +34,11 @@ f_relations = CNetRelations(related_to=True,
 # Create the filter
 my_filter = CNetFilter(f_relations, language='en')
 
+# Create singleton database
+db = create_db(is_local=IS_LOCAL_DB)
+
 # Graph network class
-cnet = CNetGraph(is_local=IS_LOCAL_DB, cnet_filter=my_filter, debug=DEBUG_GRAPH)
+cnet = CNetGraph(db, cnet_filter=my_filter, debug=DEBUG_GRAPH)
 
 # Load the graph from file
 local_graph = cnet.load_from_file('graphdata/information.graphml')
@@ -74,35 +77,3 @@ my_filter = CNetFilter(f_relations, language='en')
 # Query some word (with some filter)
 data = db.get_edges(word='information', cnet_filter=my_filter)
 ```
-
-### Collecting ordered word set from other embedding models
-
-```py
-from cnet.data.embedding import GoogleWord2Vec, Glove, GloveTwitter, CNetNumberbatch, FastText
-
-# Get word embeddings ordered set
-em = FastText(is_local=IS_LOCAL_DB)
-print(em.get_top_words('information', limit=1000))
-```
-
-### Collecting ordered word set from node2vec embedding model
-
-```py
-# Get word embeddings ordered set from node2vec embedding model.
-
-n2v_em = Node2VecBase(is_local=IS_LOCAL_DB, model_path='node2vecdata/information')
-print(n2v_em.get_top_words('information', limit=150))
-```
-
-### Embedding the nodes from the local graph using node2vec approach
-
-```py
-from cnet.data.embedding import Node2VecBase
-
-# Embed the nodes from the local graph
-# This will also save the w2v model to save_file_w2v (use save_file_model to save node2vec model directly)
-
-n2v_em = Node2VecBase(is_local=IS_LOCAL_DB)
-n2v_em.embed_nodes_from_graph('graphdata/information.graphml', save_file_w2v='node2vecdata/information', temp_folder='tmp/', workers=4)
-```
-

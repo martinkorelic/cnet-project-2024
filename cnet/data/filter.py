@@ -70,6 +70,8 @@ class CNetRelations():
         }
 
         self.list_relats = [f'/r/{r}' for r, b in self.dict_relats.items() if b]
+        self.list_bidir = ['RelatedTo', 'Synonym', 'Antonym', 'DistinctFrom', 'LocatedNear', 'SimilarTo', 'EtymologicallyRelatedTo']
+        self.dict_bidir = { k: k in self.list_bidir for k, v in self.dict_relats.items() }
 
 class CNetFilter():
 
@@ -78,6 +80,7 @@ class CNetFilter():
         
         self.language = language
         self.relations = relations.list_relats
+        self.bidirectional_relations = relations.list_bidir
         self.filters = {
             'relations': self.create_relation_filter(),
             'language': self.create_language_filter(),
