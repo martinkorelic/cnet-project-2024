@@ -202,28 +202,33 @@ class CNetGraph():
         return []
     
     def random_walk_clustering(self,
-                           graph:nx.graph, 
-                           root:str, 
-                           etf:dict,
-                           walks_per_node:int=10000, 
-                           walk_length:int=50,
-                           top_k:int=10) -> List[str]:
-        scoreboard = defaultdict(int)
-        for _ in range(walks_per_node):
-            walk = [root]
-            for i in range(walk_length - 1):
-                # create weights proportional to degrees of neighbors
-                neighbors, degrees, f = zip(*[(n, graph.degree(n), etf[graph.get_edge_data(walk[-1], n)['label']]) for n in graph.neighbors(walk[-1])])
+                            graph:nx.graph, 
+                            root:str, 
+                            etf:dict,
+                            walks_per_node:int=10000, 
+                            walk_length:int=50,
+                            top_k:int=10) -> List[str]:
+            scoreboard = defaultdict(int)
+            
+            for _ in range(walks_per_node):
+                walk = [root]
+                for i in range(walk_length - 1):
+                    # create weights proportional to degrees of neighbors
+                    neighbors, degrees, f = zip(*[(n, graph.degree(n), etf[graph.get_edge_data(walk[-1], n)['label']]) for n in graph.successors(walk[-1])])
 
-                # make next step proportional to weights * edge filter
-                degrees = np.array(degrees)
-                pick = random.choices(neighbors, degrees * f)[0]
-                walk.append(pick)
-                
-                if pick != root:
-                    scoreboard[pick] += 1
-        
-        scoreboard = dict(sorted(scoreboard.items(), key=lambda x:x[1], reverse=True))
-        return list(scoreboard.keys())[:top_k]
+                    # make next step proportional to weights * edge filter
+                    degrees = np.array(degrees)
+                    pick = random.choices(neighbors, degrees * f)[0] 
+
+                    # revert back to root in case we meet a node with no successors 
+                    if not len([n for n in graph.successors(pick)]):
+                        pick = root
+
+                    walk.append(pick)
+                    if pick != root:
+                        scoreboard[pick] += 1
+            
+            scoreboard = dict(sorted(scoreboard.items(), key=lambda x:x[1], reverse=True))
+            return list(scoreboard.keys())[:top_k]
     
 
