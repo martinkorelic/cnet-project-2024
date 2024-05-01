@@ -31,8 +31,8 @@ class CNetRelations():
                 etymologically_derived_from=False,
                 causes_desire=False,
                 made_of=False,
-                receives_action=False
-                ):
+                receives_action=False,
+                weights=[]):
         
         self.dict_relats = {
                 'RelatedTo':related_to,
@@ -72,6 +72,10 @@ class CNetRelations():
         self.list_relats = [f'/r/{r}' for r, b in self.dict_relats.items() if b]
         self.list_bidir = ['RelatedTo', 'Synonym', 'Antonym', 'DistinctFrom', 'LocatedNear', 'SimilarTo', 'EtymologicallyRelatedTo']
         self.dict_bidir = { k: k in self.list_bidir for k, v in self.dict_relats.items() }
+
+        if len(weights) > 0:
+            assert len(weights) == len(self.list_relats)
+            self.weights = { k: weights[i]  for i, (k, v) in enumerate(self.dict_relats.items()) if v}
 
 class CNetFilter():
 
