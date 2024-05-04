@@ -3,10 +3,10 @@ import numpy as np
 from mealpy.swarm_based import PSO
 from mealpy import Problem, FloatVar
 from numpy import ndarray
-from data.filter import CNetRelations, CNetFilter
-from data.db import CNetDatabase
-from graph import CNetGraph
-from metrics import iou, positionaliou, advancediou
+from .data.filter import CNetRelations, CNetFilter
+from .data.db import CNetDatabase
+from .graph import CNetGraph
+from .metrics import iou, positionaliou, advancediou, accuracy
 
 class CNetAlgoProblem(Problem):
     """
@@ -21,11 +21,12 @@ class CNetAlgoProblem(Problem):
         self.solution_models = solution_models
         self.cnet_graph = CNetGraph(db, CNetFilter(cnet_relations))
         self.local_graph = self.cnet_graph.load_from_file(f'{graph_path}/{query}.graphml')
-        super().__init__(bounds, minmax, **kwargs)
 
         # Collect solutions from wordsdata based on query
         with open(f'{solution_path}/{query}_words.json', 'r', encoding='utf-8') as file:
             self.data = json.load(file)
+
+        super().__init__(bounds, minmax, **kwargs)
 
     def positionalIoU(self, x, y):
         return positionaliou(x, y)
@@ -38,14 +39,17 @@ class CNetAlgoProblem(Problem):
     
     def obj_func(self, x: ndarray):
         # Algorithm edge weights
-        x = x / x.max()
+        x = x / np.sum(x)
 
         self.cnet_relations.weights = { k : x[i] for i, (k, _) in enumerate(self.cnet_relations.weights.items()) }
 
         # TODO
         # Run algorithm with edge weights given
-        predicted = []
-        #self.cnet_graph.random_walk_clustering(self.local_graph, root=self.query)
+        print(self.cnet_relations.weights)
+        
+        # Algorithm random walk clustering
+        if self.name == 'rwc':
+            predicted = self.cnet_graph.random_walk_clustering(self.local_graph, root=self.query, etf=self.cnet_relations.weights, top_k=100)
 
         # Average the solution metrics
         iou_scores = np.zeros(len(self.solution_models))
@@ -56,14 +60,15 @@ class CNetAlgoProblem(Problem):
             iou_scores[i] = self.IoU(self.data[sol_mod], predicted)
             posiou_scores[i] = self.positionalIoU(self.data[sol_mod], predicted)
             adviou_scores[i] = self.advancedIoU(self.data[sol_mod], predicted)
+            print(f'Algo: {sol_mod} Scores - IoU: {iou_scores[i]} | PosIoU: {posiou_scores[i]} | AdvIoU: {adviou_scores[i]} | Acc: {accuracy(self.data[sol_mod], predicted)}')
 
         return [np.average(iou_scores), np.average(posiou_scores), np.average(adviou_scores)]
 
-def optimize_cnet_algo(query, solution_models, db : CNetDatabase, cnet_relations : CNetRelations, epochs=20, n_workers=1):
+def optimize_cnet_algo(query, algo_name, solution_models, db : CNetDatabase, cnet_relations : CNetRelations, epochs=20, n_workers=1):
 
     cnet_problem = CNetAlgoProblem(
         # Bounds should be equal to length of different edge weights
-        name="Optimize CNet Algorithm",
+        name=algo_name,
         query=query,
         db=db,
         # Which model solutions to consider

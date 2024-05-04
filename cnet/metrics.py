@@ -96,3 +96,8 @@ def semantic(words1, words2, model=mdl):
             similarities.append(similarity)
     
     return np.mean(similarities)
+
+def accuracy(y_true, y_pred):
+    y_pred = set(y_pred)
+    y_true = set(y_true)
+    return len(y_true.intersection(y_pred)) / len(y_true)
