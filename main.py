@@ -2,7 +2,8 @@ import os, configparser, json
 from cnet.graph import CNetGraph
 from cnet.data.db import create_db
 from cnet.data.filter import CNetFilter, CNetRelations
-from cnet.data.embedding import most_similar_ref_words
+from cnet.data.embedding import most_similar_ref_words, FastText, Glove, GloveTwitter, GoogleWord2Vec, CNetNumberbatch
+from cnet.metrics import run_evaluation
 from cnet.optimization import optimize_cnet_algo
 
 # Read configuration
@@ -15,9 +16,26 @@ IS_LOCAL_DB = config.getboolean('DATABASE', 'local')
 DEBUG_GRAPH = config.getboolean('GRAPH', 'debug')
 GRAPH_PATH = config.get('PATHS', 'graph_path')
 EMBED_PATH = config.get('PATHS', 'embed_path')
-SAVE_PATH = config.get('PATHS', 'save_path')
+WORD_PATH = config.get('PATHS', 'word_path')
+RESULT_PATH = config.get('PATHS', 'result_path')
 
-def run_pipeline(queries, db, db_filter : CNetFilter):
+def run_pipeline(queries, db, db_filter : CNetFilter, **kwargs):
+
+    create_local_graph = kwargs.get('create_lg', True)
+    embed_local_graph = kwargs.get('embed_lg', True)
+    collect_similar_words = kwargs.get('collect_sw', True)
+    save_queries = kwargs.get('save_query', True)
+    run_algo = kwargs.get('run_algo', True)
+
+    # Initialize reference models
+    ref_models = {
+            'fastText': FastText(db),
+            'glove': Glove(db),
+            'glove_twitter': GloveTwitter(db),
+            'google_news': GoogleWord2Vec(db),
+            'cnet_nb': CNetNumberbatch(db)
+            }
+
     for query in queries:
 
         print(f'Running the pipeline for "{query}" query...')
@@ -25,17 +43,29 @@ def run_pipeline(queries, db, db_filter : CNetFilter):
         graph_path = f'{GRAPH_PATH}/{query}.graphml'
 
         # Create the local graphs
-        local_graph = cnet.create_local_graph(query, distance=2, type='noun', limit=None, save=True, filename=graph_path)
+        if create_local_graph:
+            local_graph = cnet.create_local_graph(query, distance=2, type='noun', limit=None, save=True, filename=graph_path)
+        else:
+            local_graph = cnet.load_from_file(graph_path)
         
         # Get similar reference words from other embedding models
-        res = most_similar_ref_words(query, db, graph_path=graph_path, embed_path=EMBED_PATH, save_path='', train=True)
+        if collect_similar_words:
+            res = most_similar_ref_words(query, db, graph_path=graph_path, embed_path=EMBED_PATH, ref_models=ref_models, train=embed_local_graph)
+        else:
+            res = {}
 
         # TODO: Run our algorithms and add to result
-        res['rwc'] = cnet.random_walk_clustering(local_graph, local_graph.graph['center_node'], etf=db_filter.relations.weights, top_k=100)
+        if run_algo:
+            res['rwc'] = cnet.random_walk_clustering(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
 
         # Save to json
-        with open(f'{SAVE_PATH}/{query}_words.json', "w", encoding='utf8') as file:
-            json.dump(res, file)
+        if save_queries:
+            with open(f'{WORD_PATH}/{query}_words.json', "w", encoding='utf8') as file:
+                json.dump(res, file)
+
+        print(f'Running evaluation for "{query}" query...')
+        run_evaluation(query, db, ref_models, result_path=RESULT_PATH, words_path=WORD_PATH)
+        print(f'Completed run for "{query}" query.')
 
 # Main code
 if __name__ == "__main__":
@@ -76,10 +106,10 @@ if __name__ == "__main__":
     db = create_db(is_local=IS_LOCAL_DB)
 
     # Define queries
-    queries = ['tree']
+    queries = ['network']
 
     # Run the pipeline
-    #run_pipeline(queries, db, my_filter)
+    run_pipeline(queries, db, my_filter)
 
     # Optimize for edge weights
     #optimize_cnet_algo(query, algo_name="rwc", solution_models=['glove', 'glove_twitter', 'fastText','node2vec', 'struc2vec', 'deepwalk'], db=db, cnet_relations=f_relations, epochs=10, n_workers=4)

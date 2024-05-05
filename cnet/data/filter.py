@@ -88,6 +88,7 @@ class CNetFilter():
         
         self.language = language
         self.relations = relations.list_relats
+        self.relation_weights = relations.weights 
         self.bidirectional_relations = relations.list_bidir
         self.filters = {
             'relations': self.create_relation_filter(),
