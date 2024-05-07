@@ -5,6 +5,7 @@ from cnet.data.filter import CNetFilter, CNetRelations
 from cnet.data.embedding import most_similar_ref_words, FastText, Glove, GloveTwitter, GoogleWord2Vec, CNetNumberbatch
 from cnet.metrics import run_evaluation
 from cnet.optimization import optimize_cnet_algo
+from cnet.visualization import visualize_clusters
 
 # Read configuration
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,7 @@ EMBED_PATH = config.get('PATHS', 'embed_path')
 WORD_PATH = config.get('PATHS', 'word_path')
 RESULT_PATH = config.get('PATHS', 'result_path')
 
-def run_pipeline(queries, db, db_filter : CNetFilter, **kwargs):
+def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rwc', 'node2vec', 'struc2vec', 'deepwalk'], **kwargs):
 
     create_local_graph = kwargs.get('create_lg', True)
     embed_local_graph = kwargs.get('embed_lg', True)
@@ -64,7 +65,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, **kwargs):
                 json.dump(res, file)
 
         print(f'Running evaluation for "{query}" query...')
-        run_evaluation(query, db, ref_models, result_path=RESULT_PATH, words_path=WORD_PATH)
+        run_evaluation(query, ref_models, result_path=RESULT_PATH, words_path=WORD_PATH, algos=algos)
         print(f'Completed run for "{query}" query.')
 
 # Main code
@@ -106,10 +107,11 @@ if __name__ == "__main__":
     db = create_db(is_local=IS_LOCAL_DB)
 
     # Define queries
-    queries = ['network']
+    queries = ['information', 'network']
 
     # Run the pipeline
-    run_pipeline(queries, db, my_filter)
+    #run_pipeline(queries, db, my_filter, create_lg=False)
+    #visualize_clusters('network')
 
     # Optimize for edge weights
     #optimize_cnet_algo(query, algo_name="rwc", solution_models=['glove', 'glove_twitter', 'fastText','node2vec', 'struc2vec', 'deepwalk'], db=db, cnet_relations=f_relations, epochs=10, n_workers=4)

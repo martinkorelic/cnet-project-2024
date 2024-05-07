@@ -116,7 +116,7 @@ def accuracy(y_true, y_pred):
     y_true = set(y_true)
     return len(y_true.intersection(y_pred)) / len(y_true)
 
-def run_evaluation(query, db, ref_models=None, result_path='results', words_path='wordsdata'):
+def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rwc', 'node2vec', 'struc2vec', 'deepwalk']):
 
     df = {
         # Name of comparison
@@ -142,9 +142,6 @@ def run_evaluation(query, db, ref_models=None, result_path='results', words_path
 
     with open(f'{words_path}/{query}_words.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
-
-    # TODO: Add other algos
-    algos = ['rwc', 'node2vec', 'struc2vec', 'deepwalk']
 
     # Compare each algorithm to embedding model words
     for model in ref_models:

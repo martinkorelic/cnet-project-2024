@@ -43,6 +43,8 @@ class Word2VecBase(EmbeddingModel):
     def __init__(self, model_path, db, local_model, limit):
         super().__init__(db)
 
+        self.is_algo = False
+
         if model_path is None:
             self.model = None
             return
@@ -62,12 +64,15 @@ class Word2VecBase(EmbeddingModel):
         w2v_words = self.model.similar_by_word(query, topn=limit)
 
         for word, _ in w2v_words:
-            c_w = self.filter_clean(word)
-            if c_w and c_w not in similar_words:
+
+            if not self.is_algo:
+                word = self.filter_clean(word)
+
+            if word and word not in similar_words:
                 if not check_exist:
-                    similar_words.add(c_w)
-                elif self.check_existance_net(c_w):
-                    similar_words.add(c_w)
+                    similar_words.add(word)
+                elif self.check_existance_net(word):
+                    similar_words.add(word)
 
         print(f'Collected {len(similar_words)} similar words to "{query}".')
         return similar_words
@@ -96,6 +101,7 @@ class CNetNumberbatch(Word2VecBase):
 class Node2VecBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=1, window=10, save_file_w2v='', save_file_model = '', **kwargs):
 
@@ -116,6 +122,7 @@ class Node2VecBase(Word2VecBase):
 class DeepWalkBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=4, window=10, iter=5, save_file_w2v='', save_file_model = '', **kwargs):
 
@@ -136,6 +143,7 @@ class DeepWalkBase(Word2VecBase):
 class Struc2VecBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=4, window=10, iter=5, save_file_w2v='', save_file_model = '', **kwargs):
 
