@@ -8,6 +8,9 @@ from collections import defaultdict
 import numpy as np
 import random
 
+# Word2Vec
+from gensim.models import Word2Vec
+
 class CNetGraph():
 
     def __init__(self, db : CNetDatabase, cnet_filter=None, debug=False):
@@ -18,6 +21,19 @@ class CNetGraph():
 
         # Configs
         self.debug = debug
+        self.graph = None 
+        
+        
+    def set_graph(self, graph):
+        self.graph = graph
+
+    def get_neighbors(self, current_node):
+        if self.graph is not None:
+            neighbors = list(self.graph.neighbors(current_node))
+            return neighbors
+        else:
+            print("Graph is not set. Please set the graph first.")
+            return []
 
     ## TODO:
     # Should define some other parameters which will be needed for the algorithm probably?
@@ -230,5 +246,47 @@ class CNetGraph():
             
             scoreboard = dict(sorted(scoreboard.items(), key=lambda x:x[1], reverse=True))
             return list(scoreboard.keys())[:top_k]
+        
+        
+    def random_walk(self, graph:nx.graph, start_node, walk_length, etf:dict):
+        walk = [start_node]
+        current_node = start_node
+        for _ in range(walk_length):
+            neighbors = self.get_neighbors(current_node)
+            
+            if not neighbors:
+                break
+            next_node = self.select_next_node(current_node, neighbors, etf)
+            walk.append(next_node)
+            current_node = next_node
+        return walk
+    
+    def select_next_node(self, current_node, neighbors, etf:dict):
+        # Calculate movement probability for each neighboring node
+        probabilities = []
+        total_weight = 0
+        for neighbor in neighbors:
+            edge_data = self.graph.get_edge_data(current_node, neighbor)
+            label = edge_data['label'] if 'label' in edge_data else None
+            weight = self.calculate_weight(label, etf)
+            total_weight += weight
+            probabilities.append((neighbor, weight))
+
+        # Normalize the probabilities so that the weights sum to 1
+        probabilities = [(neighbor, weight / total_weight) for neighbor, weight in probabilities]
+
+        # Select next node based on weight
+        next_node = random.choices([neighbor for neighbor, _ in probabilities], [weight for _, weight in probabilities])[0]
+        return next_node
+    
+    
+    def calculate_weight(self, label, etf:dict):
+        if label in etf:
+            return etf[label]
+        else:
+            return 0.3
     
 
+    def train_word2vec_model(self, walks):
+        model = Word2Vec(walks, vector_size=100, window=5, min_count=1, sg=1)
+        return model
