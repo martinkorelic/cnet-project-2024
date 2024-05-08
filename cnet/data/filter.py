@@ -76,14 +76,19 @@ class CNetRelations():
         if len(weights) > 0:
             assert len(weights) == len(self.list_relats)
             self.weights = { k: weights[i]  for i, (k, v) in enumerate(self.dict_relats.items()) if v}
+        else:
+            # Assume uniform distribution of weights
+            p = 1.0 / len(self.list_relats)
+            self.weights = { k: p  for k, v in self.dict_relats.items() if v}
 
 class CNetFilter():
 
     # Define what you want to filter by
-    def __init__(self, relations : CNetRelations, language) -> None:
+    def __init__(self, relations : CNetRelations, language = 'en') -> None:
         
         self.language = language
         self.relations = relations.list_relats
+        self.relation_weights = relations.weights 
         self.bidirectional_relations = relations.list_bidir
         self.filters = {
             'relations': self.create_relation_filter(),

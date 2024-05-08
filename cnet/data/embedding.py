@@ -27,6 +27,8 @@ class EmbeddingModel():
         return len(self.db.get_edges(word, type='noun', limit=1)) > 0
 
     def filter_clean(self, word):
+        if '_' in word:
+            return None
         word_tag = pos_tag(word_tokenize(word), tagset='universal')
         if word_tag:
             word_tag = word_tag[0]
@@ -40,6 +42,8 @@ class Word2VecBase(EmbeddingModel):
 
     def __init__(self, model_path, db, local_model, limit):
         super().__init__(db)
+
+        self.is_algo = False
 
         if model_path is None:
             self.model = None
@@ -60,40 +64,44 @@ class Word2VecBase(EmbeddingModel):
         w2v_words = self.model.similar_by_word(query, topn=limit)
 
         for word, _ in w2v_words:
-            c_w = self.filter_clean(word)
-            if c_w and c_w not in similar_words:
+
+            if not self.is_algo:
+                word = self.filter_clean(word)
+
+            if word and word not in similar_words:
                 if not check_exist:
-                    similar_words.add(c_w)
-                elif self.check_existance_net(c_w):
-                    similar_words.add(c_w)
+                    similar_words.add(word)
+                elif self.check_existance_net(word):
+                    similar_words.add(word)
 
         print(f'Collected {len(similar_words)} similar words to "{query}".')
         return similar_words
 
 class Glove(Word2VecBase):
-    def __init__(self, db, local_model=True, limit=300000):
+    def __init__(self, db, local_model=None, limit=1000000):
         super().__init__('glove-wiki-gigaword-100', db, local_model=local_model, limit=limit)
 
 class GloveTwitter(Word2VecBase):
-    def __init__(self, db, local_model=True, limit=300000):
+    def __init__(self, db, local_model=None, limit=1000000):
         super().__init__('glove-twitter-100', db, local_model=local_model, limit=limit)
 
 class GoogleWord2Vec(Word2VecBase):
-    def __init__(self, db, local_model=True, limit=300000):
+    def __init__(self, db, local_model=None, limit=1000000):
         super().__init__('word2vec-google-news-300', db, local_model=local_model, limit=limit)
 
 class FastText(Word2VecBase):
-    def __init__(self, db, local_model=True, limit=300000):
+    def __init__(self, db, local_model=None, limit=1000000):
         super().__init__('fasttext-wiki-news-subwords-300', db, local_model=local_model, limit=limit)
 
-# TODO: Does not work
 class CNetNumberbatch(Word2VecBase):
-    def __init__(self, db, local_model=True, limit=300000):
-        super().__init__('conceptnet-numberbatch-17-06-300', db, local_model=local_model, limit=limit)
+    def __init__(self, db, local_model=True, limit=1000000):
+        super().__init__('models/numberbatch-en.txt', db, local_model=local_model, limit=limit)
+        #super().__init__('conceptnet-numberbatch-17-06-300', db, local_model=local_model, limit=limit)
 
 class Node2VecBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=1, window=10, save_file_w2v='', save_file_model = '', **kwargs):
 
@@ -114,6 +122,7 @@ class Node2VecBase(Word2VecBase):
 class DeepWalkBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=4, window=10, iter=5, save_file_w2v='', save_file_model = '', **kwargs):
 
@@ -134,6 +143,7 @@ class DeepWalkBase(Word2VecBase):
 class Struc2VecBase(Word2VecBase):
     def __init__(self, model_path, db, local_model, limit=300000):
         super().__init__(model_path, db, local_model, limit)
+        self.is_algo = True
 
     def train(self, graph, dimensions=128, walk_length=30, num_walks=200, workers=4, window=10, iter=5, save_file_w2v='', save_file_model = '', **kwargs):
 
@@ -199,7 +209,7 @@ def embed_local_graph(query, db, graph_file, embed_path, limit=100, train=True):
 
     return n2v_top_words, s2v_top_words, dw_top_words
 
-def most_similar_ref_words(query, db, graph_path, embed_path, save_path, limit=100, train=True):
+def most_similar_ref_words(query, db, graph_path, embed_path, ref_models, save_path='wordsdata', limit=100, train=True):
     """
     Collects most similar words to query from all the embedding algorithms on the local graph and all the embedding models. 
     The OrderedSet arrays are saved to .json file and the results are returned.
@@ -207,23 +217,21 @@ def most_similar_ref_words(query, db, graph_path, embed_path, save_path, limit=1
 
     results = {}
 
-    ref_models = [
-        #('cnet_numberbatch', CNetNumberbatch),
-        ('fastText', FastText, 900),
-        ('glove', Glove, 500),
-        ('glove_twitter', GloveTwitter, 500),
-        ('google_news', GoogleWord2Vec, 1000)
-    ]
+    ref_models_limits = {
+        'cnet_nb': 500,
+        'fastText': 900,
+        'glove': 500,
+        'glove_twitter': 500,
+        'google_news': 1000
+    }
 
     # Usually collects more than specified limit words, so that the limit can be reached more easily
     # local_model = None since we have the word2vec models already downloaded.
 
     # Reference word2vec models
-    for name, model, l in ref_models:
+    for name, model in ref_models.items():
         print(f"Collecting similar words with {name} word2vec model...")
-        m = model(db, local_model=None)
-        results[name] = list(m.get_top_words(query, limit=l)[:limit])
-        print(results[name])
+        results[name] = list(model.get_top_words(query, limit=ref_models_limits[name])[:limit])
 
     # Embedding algorithm word2vec reference models
     n, s, w = embed_local_graph(query, db, graph_path, embed_path, train=train)

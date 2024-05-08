@@ -7,9 +7,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
 import random
-
-# Word2Vec
-from gensim.models import Word2Vec
+from sklearn.cluster import KMeans
 
 class CNetGraph():
 
@@ -21,11 +19,7 @@ class CNetGraph():
 
         # Configs
         self.debug = debug
-        self.graph = None 
-        
-        
-    def set_graph(self, graph):
-        self.graph = graph
+        self.graph = None
 
     def get_neighbors(self, current_node):
         if self.graph is not None:
@@ -35,10 +29,9 @@ class CNetGraph():
             print("Graph is not set. Please set the graph first.")
             return []
 
-    ## TODO:
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
-    def create_local_graph(self, query, algorithm='todo', distance=10, **kwargs):
+    def create_local_graph(self, query, distance=10, **kwargs):
         """
         Collects data from querying database into a local graph - local subset of nodes and edges.
         Here we will utilize different algorithms which will pick embedded nodes around the 
@@ -48,10 +41,6 @@ class CNetGraph():
         @query - target word
         @algorithm - algorithm to use collect embedded words
         @distance - distance used for creating local graph
-
-        Algorithm parameters:
-
-        TODO
 
         Optional parameters:
         @save - save local graph to file
@@ -70,10 +59,6 @@ class CNetGraph():
         else:
             # Create local graph based on bfs distance of n
             local_graph = self.bfs_distance(query, distance, **kwargs)
-
-        ### TODO: implement algorithms to extract embedded nodes from the local graph
-        if algorithm == 'todo':
-            output = self.algorithm1(local_graph, **kwargs)
         
         # Optionally save the local graph
         if save_data and filename:
@@ -211,19 +196,17 @@ class CNetGraph():
         nx.draw(local_graph, with_labels=True, node_color='skyblue', node_size=8, font_size=10, font_weight='bold')
         plt.show()
 
-    ## TODO:
     # Define algorithms which will create a cluster of words from the local graph around the target query
     # The order of the words is important. Should include only nouns and single words with no duplication.
-    def algorithm1(self, graph, **kwargs) -> List[str]:
-        return []
-    
-    def random_walk_clustering(self,
-                            graph:nx.graph, 
-                            root:str, 
-                            etf:dict,
-                            walks_per_node:int=10000, 
-                            walk_length:int=50,
-                            top_k:int=10) -> List[str]:
+        
+    # TODO: Adam to improve this by combining random walk with another method
+    def random_walk(self,
+                    graph:nx.graph, 
+                    root:str, 
+                    etf:dict,
+                    walks_per_node:int=1000, 
+                    walk_length:int=50,
+                    top_k:int=100) -> List[str]:
             scoreboard = defaultdict(int)
             
             for _ in range(walks_per_node):
@@ -246,47 +229,73 @@ class CNetGraph():
             
             scoreboard = dict(sorted(scoreboard.items(), key=lambda x:x[1], reverse=True))
             return list(scoreboard.keys())[:top_k]
-        
-        
-    def random_walk(self, graph:nx.graph, start_node, walk_length, etf:dict):
-        walk = [start_node]
-        current_node = start_node
-        for _ in range(walk_length):
-            neighbors = self.get_neighbors(current_node)
-            
-            if not neighbors:
+    
+    def random_walk_kmeans(self, graph: nx.Graph, central_node, etf: dict, top_k=100, dim=8, walks_per_node:int=1000, walk_length:int=50, num_clusters=500):
+
+        # Add weights for stronger attraction
+        for u, v, d in graph.edges(data=True):
+            graph.edges[(u, v)]["weight"] = etf[d['label']]
+
+        # Spring layout - Spatial mapping
+        pos = nx.spring_layout(graph, center=[0]*dim, dim=dim)
+
+        # Clusters
+        clusters, cluster_centers = self.create_clusters(pos, num_clusters=num_clusters)
+
+        # start -> random walk
+        walks = []
+        visited_clusters = {cluster: 0 for cluster in clusters}  
+        for _ in range(walks_per_node):
+            walk = [central_node]
+            for wl in range(walk_length - 1):
+                neighbors = list(graph.successors(walk[-1]))
+                degrees = np.array([graph.degree(n) for n in neighbors])
+                f = np.array([etf[graph.get_edge_data(walk[-1], n)['label']] for n in neighbors])
+                pick = random.choices(neighbors, degrees * f)[0]
+                if not len(list(graph.successors(pick))):
+                    pick = central_node
+                walk.append(pick)
+                # Check the cluster visited
+                for cluster in clusters:
+                    if pick in clusters[cluster]:
+                        visited_clusters[cluster] += (walk_length - wl)
+            walks.append(walk)
+
+        top_visited_clusters = sorted(visited_clusters, key=visited_clusters.get, reverse=True)
+
+        # Collect top related nodes from top visited clusters
+        top_related_nodes = []
+        for cluster in top_visited_clusters:
+            # Get top 4 related nodes from the current cluster
+            cluster_nodes = clusters[cluster]
+            #cluster_center = cluster_centers[cluster]
+            top_nodes = self.select_top_related_nodes(cluster_nodes, pos[central_node], pos)
+            top_related_nodes.extend(top_nodes)
+            if len(top_related_nodes) >= top_k:
                 break
-            next_node = self.select_next_node(current_node, neighbors, etf)
-            walk.append(next_node)
-            current_node = next_node
-        return walk
-    
-    def select_next_node(self, current_node, neighbors, etf:dict):
-        # Calculate movement probability for each neighboring node
-        probabilities = []
-        total_weight = 0
-        for neighbor in neighbors:
-            edge_data = self.graph.get_edge_data(current_node, neighbor)
-            label = edge_data['label'] if 'label' in edge_data else None
-            weight = self.calculate_weight(label, etf)
-            total_weight += weight
-            probabilities.append((neighbor, weight))
 
-        # Normalize the probabilities so that the weights sum to 1
-        probabilities = [(neighbor, weight / total_weight) for neighbor, weight in probabilities]
+        return top_related_nodes[:top_k]
 
-        # Select next node based on weight
-        next_node = random.choices([neighbor for neighbor, _ in probabilities], [weight for _, weight in probabilities])[0]
-        return next_node
-    
-    
-    def calculate_weight(self, label, etf:dict):
-        if label in etf:
-            return etf[label]
-        else:
-            return 0.3
-    
+    def create_clusters(self, pos, num_clusters=400):
+        
+        clusters = {i: [] for i in range(num_clusters)}
 
-    def train_word2vec_model(self, walks):
-        model = Word2Vec(walks, vector_size=100, window=5, min_count=1, sg=1)
-        return model
+        # K-means
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(list(pos.values()))
+        cluster_centers = kmeans.cluster_centers_
+
+        # Allocate nodes within a certain radius from the center nodes of each cluster to that cluster.
+        for node, node_pos in pos.items():
+            closest_cluster_idx = np.argmin(np.linalg.norm(cluster_centers - node_pos, axis=1))
+            clusters[closest_cluster_idx].append(node)
+
+        return clusters, cluster_centers
+    
+    def select_top_related_nodes(self, cluster_nodes, cluster_center, positions):
+    # Calculate distances from cluster center to each node in the cluster
+        distances = [(np.linalg.norm(np.array(positions[node]) - np.array(cluster_center)), node) for node in cluster_nodes]
+        
+        # Sort nodes by distance and select top k nodes
+        top_nodes = sorted(distances)
+
+        return [node for _, node in top_nodes]
