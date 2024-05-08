@@ -116,7 +116,7 @@ def accuracy(y_true, y_pred):
     y_true = set(y_true)
     return len(y_true.intersection(y_pred)) / len(y_true)
 
-def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rwc', 'node2vec', 'struc2vec', 'deepwalk']):
+def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rw', 'node2vec', 'struc2vec', 'deepwalk']):
 
     df = {
         # Name of comparison

@@ -23,7 +23,7 @@ class CNetGraph():
     ## TODO:
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
-    def create_local_graph(self, query, algorithm='todo', distance=10, **kwargs):
+    def create_local_graph(self, query, distance=10, **kwargs):
         """
         Collects data from querying database into a local graph - local subset of nodes and edges.
         Here we will utilize different algorithms which will pick embedded nodes around the 
@@ -33,10 +33,6 @@ class CNetGraph():
         @query - target word
         @algorithm - algorithm to use collect embedded words
         @distance - distance used for creating local graph
-
-        Algorithm parameters:
-
-        TODO
 
         Optional parameters:
         @save - save local graph to file
@@ -55,10 +51,6 @@ class CNetGraph():
         else:
             # Create local graph based on bfs distance of n
             local_graph = self.bfs_distance(query, distance, **kwargs)
-
-        ### TODO: implement algorithms to extract embedded nodes from the local graph
-        if algorithm == 'todo':
-            output = self.algorithm1(local_graph, **kwargs)
         
         # Optionally save the local graph
         if save_data and filename:
@@ -239,12 +231,6 @@ class CNetGraph():
 
         # Clusters
         clusters, cluster_centers = self.create_clusters(pos, num_clusters=num_clusters)
-        
-        #colors = ['red', 'blue', 'green', 'orange', 'purple']
-        #for i, c in enumerate(clusters):
-        #    nx.draw_networkx_nodes(graph, pos=pos, nodelist=clusters[c], node_color=colors[i%len(colors)], node_size=30)
-
-        #plt.show()
 
         # start -> random walk
         walks = []
@@ -277,12 +263,7 @@ class CNetGraph():
             top_related_nodes.extend(top_nodes)
             if len(top_related_nodes) >= top_k:
                 break
-        
-        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=graph.nodes(),node_color='orange', node_size=15)
-        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=top_related_nodes[:top_k], node_color='red', node_size=30)
-        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=[central_node], node_color='yellow', node_shape="^", node_size=200)
-        #nx.draw_networkx_edges(graph, pos=pos, edgelist=graph.edges())
-        #plt.show()
+
         return top_related_nodes[:top_k]
 
     def create_clusters(self, pos, num_clusters=400):
