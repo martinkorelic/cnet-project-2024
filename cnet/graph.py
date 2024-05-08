@@ -19,8 +19,16 @@ class CNetGraph():
 
         # Configs
         self.debug = debug
+        self.graph = None
 
-    ## TODO:
+    def get_neighbors(self, current_node):
+        if self.graph is not None:
+            neighbors = list(self.graph.neighbors(current_node))
+            return neighbors
+        else:
+            print("Graph is not set. Please set the graph first.")
+            return []
+
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
     def create_local_graph(self, query, distance=10, **kwargs):
@@ -190,6 +198,8 @@ class CNetGraph():
 
     # Define algorithms which will create a cluster of words from the local graph around the target query
     # The order of the words is important. Should include only nouns and single words with no duplication.
+        
+    # TODO: Adam to improve this by combining random walk with another method
     def random_walk(self,
                     graph:nx.graph, 
                     root:str, 

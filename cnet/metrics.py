@@ -116,6 +116,20 @@ def accuracy(y_true, y_pred):
     y_true = set(y_true)
     return len(y_true.intersection(y_pred)) / len(y_true)
 
+def mean_reciprocal_rank(array1, array2):
+    ranks = []
+    for word1 in array1:
+        for index2, word2 in enumerate(array2):
+            if word1 == word2:
+                ranks.append(1 / (index2 + 1))
+                break
+        else:
+            ranks.append(0)
+    if ranks:
+        return sum(ranks) / len(ranks)
+    else:
+        return 0
+
 def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rw', 'node2vec', 'struc2vec', 'deepwalk']):
 
     df = {
@@ -152,7 +166,7 @@ def run_evaluation(query, ref_models=None, result_path='results', words_path='wo
             df['name'].append(f'{model}-{algo}')
             df['IoU'].append(iou(data[model], data[algo]))
             df['advIoU'].append(advancediou(data[model], data[algo]))
-            df['posIoU'].append(positionaliou(data[model], data[algo]))
+            df['meanRec'].append(mean_reciprocal_rank(data[model], data[algo]))
             df['accuracy'].append(accuracy(data[model], data[algo]))
             cos, cos_query1, cos_query2 = cosine_distance(data[model], data[algo], query=query, model=ref_models[model].model)
             df['cosine'].append(cos)
@@ -169,7 +183,7 @@ def run_evaluation(query, ref_models=None, result_path='results', words_path='wo
             df['name'].append(f'{algo1}-{algo2}')
             df['IoU'].append(iou(data[algo1], data[algo2]))
             df['advIoU'].append(advancediou(data[algo1], data[algo2]))
-            df['posIoU'].append(positionaliou(data[algo1], data[algo2]))
+            df['meanRec'].append(mean_reciprocal_rank(data[algo1], data[algo2]))
             df['accuracy'].append(accuracy(data[algo1], data[algo2]))
 
             avg_cos_query = []
