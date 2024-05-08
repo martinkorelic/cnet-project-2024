@@ -20,7 +20,7 @@ EMBED_PATH = config.get('PATHS', 'embed_path')
 WORD_PATH = config.get('PATHS', 'word_path')
 RESULT_PATH = config.get('PATHS', 'result_path')
 
-def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rwc', 'node2vec', 'struc2vec', 'deepwalk'], **kwargs):
+def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans', 'node2vec', 'struc2vec', 'deepwalk'], **kwargs):
 
     create_local_graph = kwargs.get('create_lg', True)
     embed_local_graph = kwargs.get('embed_lg', True)
@@ -55,9 +55,10 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rwc', 'node2vec'
         else:
             res = {}
 
-        # TODO: Run our algorithms and add to result
+        # Run our algorithms and add to result
         if run_algo:
-            res['rwc'] = cnet.random_walk_clustering(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
+            res['rw'] = cnet.random_walk(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
+            res['rw'] = cnet.random_walk_kmeans(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
 
         # Save to json
         if save_queries:

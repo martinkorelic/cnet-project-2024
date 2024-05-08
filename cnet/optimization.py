@@ -47,9 +47,9 @@ class CNetAlgoProblem(Problem):
         # Run algorithm with edge weights given
         print(self.cnet_relations.weights)
         
-        # Algorithm random walk clustering
+        # Algorithm random walk
         if self.name == 'rwc':
-            predicted = self.cnet_graph.random_walk_clustering(self.local_graph, root=self.query, etf=self.cnet_relations.weights, top_k=100)
+            predicted = self.cnet_graph.random_walk(self.local_graph, root=self.query, etf=self.cnet_relations.weights, top_k=100)
 
         # Average the solution metrics
         iou_scores = np.zeros(len(self.solution_models))

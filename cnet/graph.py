@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
 import random
+from sklearn.cluster import KMeans
 
 class CNetGraph():
 
@@ -195,19 +196,15 @@ class CNetGraph():
         nx.draw(local_graph, with_labels=True, node_color='skyblue', node_size=8, font_size=10, font_weight='bold')
         plt.show()
 
-    ## TODO:
     # Define algorithms which will create a cluster of words from the local graph around the target query
     # The order of the words is important. Should include only nouns and single words with no duplication.
-    def algorithm1(self, graph, **kwargs) -> List[str]:
-        return []
-    
-    def random_walk_clustering(self,
-                            graph:nx.graph, 
-                            root:str, 
-                            etf:dict,
-                            walks_per_node:int=10000, 
-                            walk_length:int=50,
-                            top_k:int=10) -> List[str]:
+    def random_walk(self,
+                    graph:nx.graph, 
+                    root:str, 
+                    etf:dict,
+                    walks_per_node:int=1000, 
+                    walk_length:int=50,
+                    top_k:int=100) -> List[str]:
             scoreboard = defaultdict(int)
             
             for _ in range(walks_per_node):
@@ -231,4 +228,83 @@ class CNetGraph():
             scoreboard = dict(sorted(scoreboard.items(), key=lambda x:x[1], reverse=True))
             return list(scoreboard.keys())[:top_k]
     
+    def random_walk_kmeans(self, graph: nx.Graph, central_node, etf: dict, top_k=100, dim=8, walks_per_node:int=1000, walk_length:int=50, num_clusters=500):
 
+        # Add weights for stronger attraction
+        for u, v, d in graph.edges(data=True):
+            graph.edges[(u, v)]["weight"] = etf[d['label']]
+
+        # Spring layout - Spatial mapping
+        pos = nx.spring_layout(graph, center=[0]*dim, dim=dim)
+
+        # Clusters
+        clusters, cluster_centers = self.create_clusters(pos, num_clusters=num_clusters)
+        
+        #colors = ['red', 'blue', 'green', 'orange', 'purple']
+        #for i, c in enumerate(clusters):
+        #    nx.draw_networkx_nodes(graph, pos=pos, nodelist=clusters[c], node_color=colors[i%len(colors)], node_size=30)
+
+        #plt.show()
+
+        # start -> random walk
+        walks = []
+        visited_clusters = {cluster: 0 for cluster in clusters}  
+        for _ in range(walks_per_node):
+            walk = [central_node]
+            for wl in range(walk_length - 1):
+                neighbors = list(graph.successors(walk[-1]))
+                degrees = np.array([graph.degree(n) for n in neighbors])
+                f = np.array([etf[graph.get_edge_data(walk[-1], n)['label']] for n in neighbors])
+                pick = random.choices(neighbors, degrees * f)[0]
+                if not len(list(graph.successors(pick))):
+                    pick = central_node
+                walk.append(pick)
+                # Check the cluster visited
+                for cluster in clusters:
+                    if pick in clusters[cluster]:
+                        visited_clusters[cluster] += (walk_length - wl)
+            walks.append(walk)
+
+        top_visited_clusters = sorted(visited_clusters, key=visited_clusters.get, reverse=True)
+
+        # Collect top related nodes from top visited clusters
+        top_related_nodes = []
+        for cluster in top_visited_clusters:
+            # Get top 4 related nodes from the current cluster
+            cluster_nodes = clusters[cluster]
+            #cluster_center = cluster_centers[cluster]
+            top_nodes = self.select_top_related_nodes(cluster_nodes, pos[central_node], pos)
+            top_related_nodes.extend(top_nodes)
+            if len(top_related_nodes) >= top_k:
+                break
+        
+        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=graph.nodes(),node_color='orange', node_size=15)
+        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=top_related_nodes[:top_k], node_color='red', node_size=30)
+        #nx.draw_networkx_nodes(graph, pos=pos, nodelist=[central_node], node_color='yellow', node_shape="^", node_size=200)
+        #nx.draw_networkx_edges(graph, pos=pos, edgelist=graph.edges())
+        #plt.show()
+        return top_related_nodes[:top_k]
+
+    def create_clusters(self, pos, num_clusters=400):
+        
+        clusters = {i: [] for i in range(num_clusters)}
+
+        # K-means
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(list(pos.values()))
+        cluster_centers = kmeans.cluster_centers_
+
+        # Allocate nodes within a certain radius from the center nodes of each cluster to that cluster.
+        for node, node_pos in pos.items():
+            closest_cluster_idx = np.argmin(np.linalg.norm(cluster_centers - node_pos, axis=1))
+            clusters[closest_cluster_idx].append(node)
+
+        return clusters, cluster_centers
+    
+    def select_top_related_nodes(self, cluster_nodes, cluster_center, positions):
+    # Calculate distances from cluster center to each node in the cluster
+        distances = [(np.linalg.norm(np.array(positions[node]) - np.array(cluster_center)), node) for node in cluster_nodes]
+        
+        # Sort nodes by distance and select top k nodes
+        top_nodes = sorted(distances)
+
+        return [node for _, node in top_nodes]
