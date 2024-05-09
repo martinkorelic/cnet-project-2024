@@ -31,14 +31,6 @@ class CNetGraph():
             'infomap' : algorithms.infomap
         }
 
-    def get_neighbors(self, current_node):
-        if self.graph is not None:
-            neighbors = list(self.graph.neighbors(current_node))
-            return neighbors
-        else:
-            print("Graph is not set. Please set the graph first.")
-            return []
-
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
     def create_local_graph(self, query, distance=10, **kwargs):
@@ -208,8 +200,6 @@ class CNetGraph():
 
     # Define algorithms which will create a cluster of words from the local graph around the target query
     # The order of the words is important. Should include only nouns and single words with no duplication.
-        
-    # TODO: Adam to improve this by combining random walk with another method
     def random_walk(self,
                     graph:nx.graph, 
                     root:str, 
@@ -310,16 +300,16 @@ class CNetGraph():
 
         return [node for _, node in top_nodes]
     
-    
-
-    # random walk-based clustering 🇮🇳 (source: https://www.youtube.com/watch?v=xUuKckq38g4)
-    def indian_clustering(self,            #please rename, I don't know what to call it
+    # Random similarity walk-based clustering 🇮🇳 (source: https://www.youtube.com/watch?v=xUuKckq38g4)
+    def random_walk_similarity(self,         
                         g:nx.Graph,
                         root_node:str,
                         etf:dict,
-                        walks_per_node:int=1000, 
+                        center_nodes:int=100,
+                        walks_per_node:int=100, 
                         walk_length:int=50,
-                        threshold:float=0.4):
+                        threshold:float=0.03,
+                        topk:int=100):
         
         # utility functions
         def jaccard_sim(s1, s2):
@@ -335,15 +325,16 @@ class CNetGraph():
             for c in clusters:
                 if root in c:
                     return c
-            return None
+            return []
 
         # obtain sets <S>
-        nodes, SETS = [n for n in g.nodes], []
+        # Reduce the number of nodes to perform the walk
+        nodes, SETS = list(g.nodes)[:center_nodes] + [root_node], []
         for n in nodes:
             S = []
-            for i in range(walks_per_node):
+            for _ in range(walks_per_node):
                 stack = [n]
-                for j in range(walk_length-1):
+                for _ in range(walk_length-1):
                     choices = [n_i for n_i in g.successors(stack[-1])]
                     if not choices:
                         break
@@ -366,7 +357,6 @@ class CNetGraph():
         for p1, p2 in itertools.combinations(SETS, 2):
             n1, s1 = p1
             n2, s2 = p2
-
             if jaccard_sim(s1, s2) >= threshold:
                 # they both already have clusters -> merge clusters
                 if n1 in has_cluster and n2 in has_cluster:
@@ -400,11 +390,18 @@ class CNetGraph():
             clusters.append([node])
 
         # locate cluster with root word and return
-        cluster = locate_cluster(clusters, root_node)
-                
-        return cluster
-    
+        top_words = locate_cluster(clusters, root_node)
+        
+        for n in nodes:
 
+            if len(top_words) >= topk:
+                break
+            if n in top_words:
+                continue
+            top_words.extend(locate_cluster(clusters, n))
+                
+        return top_words[:topk]
+    
     def cdlib_clustering(self, alg, graph:nx.graph, root_node:str):
         # obtain communities with root node
         communities = alg(graph).communities

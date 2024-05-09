@@ -5,7 +5,7 @@ from collections import Counter
 from scipy.spatial.distance import cosine
 import numpy as np
 
-nltk.download('punkt')
+#nltk.download('punkt')
 
 def advancediou(array1, array2, exact_match_weight=1.0, stem_match_weight=0.5):
     stemmer = PorterStemmer()
@@ -130,7 +130,7 @@ def mean_reciprocal_rank(array1, array2):
     else:
         return 0
 
-def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rw', 'node2vec', 'struc2vec', 'deepwalk']):
+def run_evaluation(query, ref_models=None, result_path='results', words_path='wordsdata', algos = ['rw', 'rw_kmeans', 'rw_sim', 'node2vec', 'struc2vec', 'deepwalk']):
 
     df = {
         # Name of comparison
@@ -138,7 +138,7 @@ def run_evaluation(query, ref_models=None, result_path='results', words_path='wo
         # Metrics
         'IoU': [],
         'advIoU': [],
-        'posIoU': [],
+        'meanRec': [],
         'accuracy': [],
         # Cosine distance between two arrays of compared words
         # Range: [0, 1] - high is more similar
