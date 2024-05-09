@@ -3,8 +3,8 @@ import matplotlib.patches as mpatches
 import json
 import networkx as nx
 
-def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['deepwalk', 'node2vec', 'struc2vec', 'rwc']):
-    colors = ['red', 'blue', 'green', 'purple', 'orange']
+def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec', 'rwc']):
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
     local_graph = nx.read_graphml(f'{graph_path}/{query}.graphml')
     data = []
     with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:

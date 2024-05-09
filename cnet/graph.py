@@ -4,10 +4,14 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 # imports for random_walk_clustering
-from collections import defaultdict
+from collections import defaultdict, Counter
+import itertools
 import numpy as np
 import random
 from sklearn.cluster import KMeans
+
+# import for cdlib clustering
+from cdlib import algorithms
 
 class CNetGraph():
 
@@ -20,6 +24,12 @@ class CNetGraph():
         # Configs
         self.debug = debug
         self.graph = None
+
+        # Cdlib
+        self.algs = {
+            'leiden' : algorithms.leiden,
+            'infomap' : algorithms.infomap
+        }
 
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
@@ -189,8 +199,6 @@ class CNetGraph():
 
     # Define algorithms which will create a cluster of words from the local graph around the target query
     # The order of the words is important. Should include only nouns and single words with no duplication.
-        
-    # TODO: Adam to improve this by combining random walk with another method
     def random_walk(self,
                     graph:nx.graph, 
                     root:str, 
@@ -290,3 +298,115 @@ class CNetGraph():
         top_nodes = sorted(distances)
 
         return [node for _, node in top_nodes]
+    
+    # Random similarity walk-based clustering 🇮🇳 (source: https://www.youtube.com/watch?v=xUuKckq38g4)
+    def random_walk_similarity(self,         
+                        g:nx.Graph,
+                        root_node:str,
+                        etf:dict,
+                        center_nodes:int=100,
+                        walks_per_node:int=100, 
+                        walk_length:int=50,
+                        threshold:float=0.03,
+                        topk:int=100):
+        
+        # utility functions
+        def jaccard_sim(s1, s2):
+            return (len(s1.intersection(s2))) / len(s1.union(s2))
+        
+        def find_location(list_of_lists, element):
+            for i, sublist in enumerate(list_of_lists):
+                if element in sublist:
+                    return i
+            return None
+        
+        def locate_cluster(clusters, root):
+            for c in clusters:
+                if root in c:
+                    return c
+            return []
+
+        # obtain sets <S>
+        # Reduce the number of nodes to perform the walk
+        nodes, SETS = list(g.nodes)[:center_nodes] + [root_node], []
+        for n in nodes:
+            S = []
+            for _ in range(walks_per_node):
+                stack = [n]
+                for _ in range(walk_length-1):
+                    choices = [n_i for n_i in g.successors(stack[-1])]
+                    if not choices:
+                        break
+                    else:
+                        weights = [etf[g.get_edge_data(stack[-1], n_i)['label']] for n_i in choices]
+                        pick = random.choices(choices, weights, k=1)[0]
+                        stack.append(pick)
+                S.append(set(stack))
+
+            # delete infrequent items
+            counts = Counter([node for nodes in S for node in nodes])
+            for s in S:
+                # inverted condition because of difference update
+                s.difference_update({node for node in s if counts[node] < walks_per_node * threshold}) 
+            SETS.append( (n, set().union(*S)) )
+        
+        # cluster nodes based on jaccard distances
+        has_cluster = set()
+        clusters = []
+        for p1, p2 in itertools.combinations(SETS, 2):
+            n1, s1 = p1
+            n2, s2 = p2
+            if jaccard_sim(s1, s2) >= threshold:
+                # they both already have clusters -> merge clusters
+                if n1 in has_cluster and n2 in has_cluster:
+                    i1, i2 = find_location(clusters, n1), find_location(clusters, n2)
+                    c1, c2 = clusters[i1], clusters[i2]
+                    clusters = [c for c in clusters if c != c1 and c != c2]
+                    clusters.append( list(set(c1).union(set(c2))) )
+                # only n1 has cluster -> add n2 to the cluster
+                elif n1 in has_cluster and n2 not in has_cluster:
+                    i1 = find_location(clusters, n1)
+                    c = clusters[i1]
+                    c.append(n2)
+                    clusters[i1] = c
+                    has_cluster.add(n2)
+                # only n2 has cluster -> add n1 to the cluster
+                elif n2 in has_cluster and n1 not in has_cluster:
+                    i2 = find_location(clusters, n2)
+                    c = clusters[i2]
+                    c.append(n1)
+                    clusters[i2] = c
+                    has_cluster.add(n1)
+                # none have clusters -> create new cluster
+                elif n1 not in has_cluster and n2 not in has_cluster:
+                    c = [n1, n2]
+                    clusters.append(c)
+                    has_cluster.add(n1)
+                    has_cluster.add(n2)
+
+        # add remaining nodes as individual clusters (failiure cases)
+        for node in set(nodes).difference(has_cluster):
+            clusters.append([node])
+
+        # locate cluster with root word and return
+        top_words = locate_cluster(clusters, root_node)
+        
+        for n in nodes:
+
+            if len(top_words) >= topk:
+                break
+            if n in top_words:
+                continue
+            top_words.extend(locate_cluster(clusters, n))
+                
+        return top_words[:topk]
+    
+    def cdlib_clustering(self, alg, graph:nx.graph, root_node:str):
+        # obtain communities with root node
+        communities = alg(graph).communities
+        # return community if root_node is included, else None
+        for com in communities:
+            if root_node in com:
+                return com
+        return None
+

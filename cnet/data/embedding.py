@@ -192,11 +192,11 @@ def embed_local_graph(query, db, graph_file, embed_path, limit=100, train=True):
 
     if train:
         print('Node2Vec training phase...')
-        n2v.train(graph, save_file_model=save_path, workers=4)
+        n2v.train(graph, save_file_w2v=save_path, workers=4)
         print('Struc2Vec training phase...')
-        s2v.train(graph, save_file_model=save_path, workers=4)
+        s2v.train(graph, save_file_w2v=save_path, workers=4)
         print('DeepWalk training phase...')
-        dw.train(graph, save_file_model=save_path, workers=4)
+        dw.train(graph, save_file_w2v=save_path, workers=4)
 
     print(f"Collecting similar words with node2vec model...")
     n2v_top_words = n2v.get_top_words(query, limit=300)[:limit]

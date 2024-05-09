@@ -20,7 +20,7 @@ EMBED_PATH = config.get('PATHS', 'embed_path')
 WORD_PATH = config.get('PATHS', 'word_path')
 RESULT_PATH = config.get('PATHS', 'result_path')
 
-def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans', 'node2vec', 'struc2vec', 'deepwalk'], **kwargs):
+def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans', 'rw_sim', 'node2vec', 'struc2vec', 'deepwalk'], **kwargs):
 
     create_local_graph = kwargs.get('create_lg', True)
     embed_local_graph = kwargs.get('embed_lg', True)
@@ -35,7 +35,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
             'glove_twitter': GloveTwitter(db),
             'google_news': GoogleWord2Vec(db),
             'cnet_nb': CNetNumberbatch(db)
-            }
+        }
 
     for query in queries:
 
@@ -45,7 +45,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
 
         # Create the local graphs
         if create_local_graph:
-            local_graph = cnet.create_local_graph(query, distance=2, limit=2000, save=True, filename=graph_path)
+            local_graph = cnet.create_local_graph(query, distance=2, limit=1000, save=True, filename=graph_path)
         else:
             local_graph = cnet.load_from_file(graph_path)
         
@@ -58,7 +58,8 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
         # Run our algorithms and add to result
         if run_algo:
             res['rw'] = cnet.random_walk(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
-            res['rw'] = cnet.random_walk_kmeans(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
+            res['rw_kmeans'] = cnet.random_walk_kmeans(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, top_k=100)
+            res['rw_sim'] = cnet.random_walk_similarity(local_graph, local_graph.graph['center_node'], etf=db_filter.relation_weights, topk=100)
 
         # Save to json
         if save_queries:
@@ -77,8 +78,28 @@ if __name__ == "__main__":
     ## Optionally create filters
 
     # Define relations needed
-    f_relations = CNetRelations(derived_from=True
-                                )
+    f_relations = CNetRelations(related_to=True,
+                                is_a=True,
+                                part_of=True,
+                                has_a=True,
+                                used_for=True,
+                                capable_of=True,
+                                at_location=True,
+                                causes=True,
+                                has_property=True,
+                                motivated_by_goal=True,
+                                obstructed_by=True,
+                                desires=True,
+                                created_by=True,
+                                synonym=True,
+                                antonym=True,
+                                derived_from=True,
+                                symbol_of=True,
+                                manner_of=True,
+                                located_near=True,
+                                similar_to=True,
+                                made_of=True,
+                                receives_action=True)
 
     # Create the filter
     my_filter = CNetFilter(f_relations, language='en')
@@ -87,11 +108,11 @@ if __name__ == "__main__":
     db = create_db(is_local=IS_LOCAL_DB)
 
     # Define queries
-    queries = ['information', 'network']
-    #cnet.visualize(local_graph)
+    queries = ['planet', 'bread', 'lion', 'art', 'node']
+
     # Run the pipeline
-    #run_pipeline(queries, db, my_filter, create_lg=False)
-    #visualize_clusters('network')
+    #run_pipeline(queries, db, my_filter)
+    #visualize_clusters('king')
 
     # Optimize for edge weights
     #optimize_cnet_algo(query, algo_name="rwc", solution_models=['glove', 'glove_twitter', 'fastText','node2vec', 'struc2vec', 'deepwalk'], db=db, cnet_relations=f_relations, epochs=10, n_workers=4)
