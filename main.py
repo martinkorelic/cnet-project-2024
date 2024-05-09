@@ -45,7 +45,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
 
         # Create the local graphs
         if create_local_graph:
-            local_graph = cnet.create_local_graph(query, distance=2, type='noun', limit=None, save=True, filename=graph_path)
+            local_graph = cnet.create_local_graph(query, distance=2, limit=2000, save=True, filename=graph_path)
         else:
             local_graph = cnet.load_from_file(graph_path)
         
@@ -77,28 +77,7 @@ if __name__ == "__main__":
     ## Optionally create filters
 
     # Define relations needed
-    f_relations = CNetRelations(related_to=True,
-                                is_a=True,
-                                part_of=True,
-                                has_a=True,
-                                used_for=True,
-                                capable_of=True,
-                                at_location=True,
-                                causes=True,
-                                has_property=True,
-                                motivated_by_goal=True,
-                                obstructed_by=True,
-                                desires=True,
-                                created_by=True,
-                                synonym=True,
-                                antonym=True,
-                                derived_from=True,
-                                symbol_of=True,
-                                manner_of=True,
-                                located_near=True,
-                                similar_to=True,
-                                made_of=True,
-                                receives_action=True
+    f_relations = CNetRelations(derived_from=True
                                 )
 
     # Create the filter
@@ -109,7 +88,7 @@ if __name__ == "__main__":
 
     # Define queries
     queries = ['information', 'network']
-
+    #cnet.visualize(local_graph)
     # Run the pipeline
     #run_pipeline(queries, db, my_filter, create_lg=False)
     #visualize_clusters('network')

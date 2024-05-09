@@ -125,7 +125,7 @@ class CNetFilter():
         return d
 
     def __filter(self, data, conjuction=True):
-        ds = [ f(data) for f in self.filters.values() ]
+        ds = [ f(data) for f in self.filters.values() ]    
         return all(ds) if conjuction else any(ds)
 
     # Run data through every defined filter

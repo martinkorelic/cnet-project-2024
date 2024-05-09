@@ -21,14 +21,6 @@ class CNetGraph():
         self.debug = debug
         self.graph = None
 
-    def get_neighbors(self, current_node):
-        if self.graph is not None:
-            neighbors = list(self.graph.neighbors(current_node))
-            return neighbors
-        else:
-            print("Graph is not set. Please set the graph first.")
-            return []
-
     # Should define some other parameters which will be needed for the algorithm probably?
     # Should convert data into the graph after the algorithm or simultaneously?
     def create_local_graph(self, query, distance=10, **kwargs):
@@ -143,7 +135,6 @@ class CNetGraph():
 
         # Collect necessary data
         for e_data in edges:
-            
             # No self-loops please
             if e_data["start"]["label"] == e_data["end"]["label"]:
                 continue

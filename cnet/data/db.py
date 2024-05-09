@@ -101,7 +101,7 @@ class CNetLocal(CNetDatabase):
 
     def get_edges(self, word, cnet_filter: CNetFilter = None, **kwargs):
         target_language = 'en'
-        cnet_type = ''
+        cnet_type = None
         uri = ''
         limit = 100
         offset = 0
@@ -131,7 +131,7 @@ class CNetLocal(CNetDatabase):
         # Filter the data if needed
         if cnet_filter:
             data = cnet_filter.run_filters(data)
-        
+
         return data
     
     def get_single_edge(self, start_word, end_word, relation, cnet_filter: CNetFilter = None, **kwargs):
