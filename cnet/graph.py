@@ -145,7 +145,6 @@ class CNetGraph():
 
         # Collect necessary data
         for e_data in edges:
-            
             # No self-loops please
             if e_data["start"]["label"] == e_data["end"]["label"]:
                 continue
