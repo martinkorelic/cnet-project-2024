@@ -45,7 +45,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
 
         # Create the local graphs
         if create_local_graph:
-            local_graph = cnet.create_local_graph(query, distance=2, limit=1000, save=True, filename=graph_path)
+            local_graph = cnet.create_local_graph(query, distance=1, limit=1000, save=True, filename=graph_path)
         else:
             local_graph = cnet.load_from_file(graph_path)
         
@@ -64,7 +64,7 @@ def run_pipeline(queries, db, db_filter : CNetFilter, algos = ['rw', 'rw_kmeans'
         # Save to json
         if save_queries:
             with open(f'{WORD_PATH}/{query}_words.json', "w", encoding='utf8') as file:
-                json.dump(res, file)
+                json.dump(res, file, ensure_ascii=False)
 
         print(f'Running evaluation for "{query}" query...')
         run_evaluation(query, ref_models, result_path=RESULT_PATH, words_path=WORD_PATH, algos=algos)
@@ -108,11 +108,11 @@ if __name__ == "__main__":
     db = create_db(is_local=IS_LOCAL_DB)
 
     # Define queries
-    queries = ['planet', 'bread', 'lion', 'art', 'node']
+    #queries = ['lion', 'art', 'node']
 
     # Run the pipeline
     #run_pipeline(queries, db, my_filter)
-    #visualize_clusters('king')
+    #visualize_clusters('node')
 
     # Optimize for edge weights
     #optimize_cnet_algo(query, algo_name="rwc", solution_models=['glove', 'glove_twitter', 'fastText','node2vec', 'struc2vec', 'deepwalk'], db=db, cnet_relations=f_relations, epochs=10, n_workers=4)
