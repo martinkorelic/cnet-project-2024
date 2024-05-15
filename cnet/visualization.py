@@ -41,7 +41,7 @@ def visualize_clusters_embedding(query, mdl, origin_model, topk=100, words_path=
     
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
 
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(1))
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     data = []
     with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:
         data = json.load(file)
@@ -67,6 +67,6 @@ def visualize_clusters_embedding(query, mdl, origin_model, topk=100, words_path=
             print(f"The word '{query}' does not exist in the model '{model_name}'")
 
     
-    ax.set_title(f"Radial Plot of Word Similarities to '{query}' in {origin_model} embedding space")
+    ax.set_title(f"Most similar words to '{query}' in {origin_model} embedding space")
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
