@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import json
 import networkx as nx
+import numpy as np
+from sklearn.manifold import TSNE
+from sklearn.metrics.pairwise import cosine_similarity
+import gensim.downloader as api
 
 def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec', 'rwc']):
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
@@ -24,4 +28,42 @@ def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='words
     plt.title(f'Most similar words to "{query}" in graph space')
     legend_patches = [mpatches.Patch(color=color, label=label) for color, label in zip(colors, algos)] + [mpatches.Patch(color='yellow', label=f'Query word')]
     plt.legend(handles=legend_patches)
+    plt.show()
+
+models_dict = {
+    "glove": "glove-wiki-gigaword-100",
+    "google_news": "word2vec-google-news-300",
+    "fastText": "fasttext-wiki-news-subwords-300",
+    "glove_twitter": "glove-twitter-100"
+}
+
+def visualize_clusters_embedding(query, words_path='wordsdata', algos=['fastText', 'glove', 'glove_twitter', 'google_news']):
+    colors = ['red', 'blue', 'green', 'purple']
+
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    data = []
+    with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:
+        data = json.load(file)
+    for model_name, color in zip(algos, colors):
+        selected_words = data[model_name]
+        mdl = api.load(models_dict[model_name])
+        if query in mdl:
+            target_vector = mdl[query]
+
+            words = np.array([word for word in selected_words if word in mdl])
+            vectors = np.stack([mdl[word] for word in words])
+            similarities = cosine_similarity([target_vector], vectors).flatten()
+            theta = TSNE(n_components=1, random_state=0).fit_transform(vectors).flatten()
+
+            c = ax.scatter(theta, similarities, color=color, alpha=0.75, label=model_name)
+
+            average_r = np.mean(similarities)
+            ax.arrow(0, 0, 0, average_r, alpha=0.5, width=0.015,
+                    edgecolor='black', facecolor=color, lw=1)
+
+        else:
+            print(f"The word '{query}' does not exist in the model '{model_name}'")
+
+    ax.set_title(f"Radial Plot of Word Similarities to '{query}'")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
