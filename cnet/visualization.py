@@ -4,10 +4,10 @@ import json
 import networkx as nx
 import numpy as np
 from sklearn.manifold import TSNE
-from sklearn.metrics.pairwise import cosine_similarity
+from scipy.spatial.distance import cosine
 import gensim.downloader as api
 
-def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec', 'rwc']):
+def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec']):
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
     local_graph = nx.read_graphml(f'{graph_path}/{query}.graphml')
     data = []
@@ -37,33 +37,36 @@ models_dict = {
     "glove_twitter": "glove-twitter-100"
 }
 
-def visualize_clusters_embedding(query, words_path='wordsdata', algos=['fastText', 'glove', 'glove_twitter', 'google_news']):
-    colors = ['red', 'blue', 'green', 'purple']
+def visualize_clusters_embedding(query, mdl, origin_model, topk=100, words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec']):
+    
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
 
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(1))
     data = []
     with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:
         data = json.load(file)
+    #ax.set_theta_zero_location('N')
+    ref_avg_sim = np.average([cosine(mdl[word], mdl[query]) for word in data[origin_model] if word in mdl])
+    ax.plot(np.linspace(0, 2*np.pi, 100), np.ones(100)*ref_avg_sim, color='r', linestyle='--', label=f'avg. {origin_model}')
+
     for model_name, color in zip(algos, colors):
         selected_words = data[model_name]
-        mdl = api.load(models_dict[model_name])
+
         if query in mdl:
             target_vector = mdl[query]
 
             words = np.array([word for word in selected_words if word in mdl])
-            vectors = np.stack([mdl[word] for word in words])
-            similarities = cosine_similarity([target_vector], vectors).flatten()
-            theta = TSNE(n_components=1, random_state=0).fit_transform(vectors).flatten()
+            vectors = np.stack([mdl[word] for word in words][:topk])
+            similarities = [cosine(target_vector, v) for v in vectors][:topk]
+            
+            theta = TSNE(n_components=1, metric='cosine', random_state=0).fit_transform(vectors).flatten()
 
             c = ax.scatter(theta, similarities, color=color, alpha=0.75, label=model_name)
-
-            average_r = np.mean(similarities)
-            ax.arrow(0, 0, 0, average_r, alpha=0.5, width=0.015,
-                    edgecolor='black', facecolor=color, lw=1)
 
         else:
             print(f"The word '{query}' does not exist in the model '{model_name}'")
 
-    ax.set_title(f"Radial Plot of Word Similarities to '{query}'")
+    
+    ax.set_title(f"Radial Plot of Word Similarities to '{query}' in {origin_model} embedding space")
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
