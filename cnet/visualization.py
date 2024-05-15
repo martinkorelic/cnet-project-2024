@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.manifold import TSNE
 from scipy.spatial.distance import cosine
 import gensim.downloader as api
+from wordcloud import WordCloud
 
 def visualize_clusters(query, topk=99, graph_path='graphdata', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec']):
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
@@ -69,4 +70,43 @@ def visualize_clusters_embedding(query, mdl, origin_model, topk=100, words_path=
     
     ax.set_title(f"Most similar words to '{query}' in {origin_model} embedding space")
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.show()
+
+def wordcloud(query='node', words_path='wordsdata', algos=['rw', 'rw_sim', 'rw_kmeans', 'deepwalk', 'node2vec', 'struc2vec']):
+    word_freq = {}
+    with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:
+        data = json.load(file)
+    
+    for algo in algos:
+        for i, word in enumerate(data[algo]):
+            # Calculate the frequency as the inverse of the index (words at the start get higher frequency)
+            freq = len(data[algo]) - i
+            if word in word_freq:
+                word_freq[word] += freq
+            else:
+                word_freq[word] = freq
+    
+    wordcloud = WordCloud(background_color='white', width=1600, height=800).generate_from_frequencies(word_freq)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title(f'Word cloud of most similar words to "{query}" in graph space')
+    plt.show()
+
+def wordcloud_embedding(query='node', words_path='wordsdata', algos=['fastText', 'glove', 'glove_twitter', 'google_news']):
+    word_freq = {}
+    with open(f'{words_path}/{query}_words.json', encoding='utf8', mode='r') as file:
+        data = json.load(file)
+    for algo in algos:
+        for i, word in enumerate(data[algo]):
+            # Calculate the frequency as the inverse of the index (words at the start get higher frequency)
+            freq = len(data[algo]) - i
+            if word in word_freq:
+                word_freq[word] += freq
+            else:
+                word_freq[word] = freq
+    
+    wordcloud = WordCloud(background_color='white', width=1600, height=800).generate_from_frequencies(word_freq)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title(f'Word cloud of most similar words to "{query}" in embedding space')
     plt.show()
