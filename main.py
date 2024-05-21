@@ -5,7 +5,7 @@ from cnet.data.filter import CNetFilter, CNetRelations
 from cnet.data.embedding import most_similar_ref_words, FastText, Glove, GloveTwitter, GoogleWord2Vec, CNetNumberbatch
 from cnet.metrics import run_evaluation
 from cnet.optimization import optimize_cnet_algo
-from cnet.visualization import visualize_clusters, visualize_clusters_embedding
+from cnet.visualization import visualize_clusters, visualize_clusters_embedding, wordcloud
 
 # Read configuration
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -113,7 +113,9 @@ if __name__ == "__main__":
     # Run the pipeline
     #run_pipeline(queries, db, my_filter)
     #visualize_clusters('node')
-    visualize_clusters_embedding('node', Glove(db).model, origin_model='glove', topk=40)
+    #visualize_clusters_embedding('node', Glove(db).model, origin_model='glove', topk=40)
+    #wordcloud('node')
+    #wordcloud('node', algos=['google_news', 'fastText', 'glove', 'glove_twitter', 'cnet_nb'])
 
     # Optimize for edge weights
     #optimize_cnet_algo(query, algo_name="rwc", solution_models=['glove', 'glove_twitter', 'fastText','node2vec', 'struc2vec', 'deepwalk'], db=db, cnet_relations=f_relations, epochs=10, n_workers=4)
