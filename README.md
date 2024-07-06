@@ -1,5 +1,6 @@
 # ConceptNet INA project 2024
-Introduction to Network Analysis 2023/24 Project
+
+Network analysis project which utilises several graph embedding techniques and compares them with traditional word2vec embedding techniques on ConceptNet graph data. By applying various algorithms on the ConceptNet graph to we try to identify clusters of words that exhibit close semantic relationships. These are compared with distributional word embedding approaches from different models like GloVE, fastText, Google word2vec...
 
 - `cnet_data` - module for handling data related tasks
 - `INA_project.ipynb` - Python notebook for coding whatever project related
@@ -77,3 +78,5 @@ my_filter = CNetFilter(f_relations, language='en')
 # Query some word (with some filter)
 data = db.get_edges(word='information', cnet_filter=my_filter)
 ```
+
+> Made as a project in the course "Introduction to Network Analysis" @ Univerza v Ljubljani - Fakulteta za računalništvo in informatiko
