@@ -1,9 +1,14 @@
 # ConceptNet INA project 2024
 
-Network analysis project which utilises several graph embedding techniques and compares them with traditional word2vec embedding techniques on ConceptNet graph data. By applying various algorithms on the ConceptNet graph to we try to identify clusters of words that exhibit close semantic relationships. These are compared with distributional word embedding approaches from different models like GloVE, fastText, Google word2vec...
+Network analysis project which utilises several graph embedding techniques and compares them with traditional word2vec embedding techniques on ConceptNet graph data. By applying various algorithms on the ConceptNet graph to we try to identify clusters of words that exhibit close semantic relationships. These similarities are compared with distributional word embedding approaches from different models like GloVE, fastText, Google word2vec... 
 
-- `cnet_data` - module for handling data related tasks
-- `INA_project.ipynb` - Python notebook for coding whatever project related
+- `cnet` - module for handling data related tasks
+- `graphdata` - local graph clusters created from ConceptNet graph
+- `results` - results from experimenting
+- `wordsdata` - similar words obtained from word2vec models
+
+![](results/node_graph_space1.png)
+
 
 ## Setup
 
